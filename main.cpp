@@ -41,6 +41,25 @@ void DrawPlayer(SDL_Renderer* renderer, int x, int y) {
     SDL_RenderFillRect(renderer, &playerRect);
 }
 
+void DrawMap(SDL_Renderer* renderer, const std::vector<std::vector<int>>& map) {
+    for (int y = 0; y < MAP_HEIGHT; ++y) {
+        for (int x = 0; x < MAP_WIDTH; ++x) {
+            if (map[y][x] == 1) {
+                SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+                SDL_Rect wallRect = { x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+                SDL_RenderFillRect(renderer, &wallRect);
+            }
+        }
+    }
+}
+
+bool CheckCollision(const Player& player, const std::vector<std::vector<int>>& map) {
+    if (map[player.y][player.x] == 1) {
+        return true;
+    }
+    return false;
+}
+
 int main(int argc, char* argv[]) {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cerr << "Could not initialize SDL: " << SDL_GetError() << std::endl;
@@ -83,6 +102,18 @@ int main(int argc, char* argv[]) {
 
     Player player = { MAP_WIDTH / 2, MAP_HEIGHT / 2, RIGHT };
 
+    // Define a simple map (0 = empty, 1 = wall)
+    std::vector<std::vector<int>> map(MAP_HEIGHT, std::vector<int>(MAP_WIDTH, 0));
+    // Add some walls for demonstration
+    for (int i = 0; i < MAP_WIDTH; ++i) {
+        map[0][i] = 1; // Top wall
+        map[MAP_HEIGHT - 1][i] = 1; // Bottom wall
+    }
+    for (int i = 0; i < MAP_HEIGHT; ++i) {
+        map[i][0] = 1; // Left wall
+        map[i][MAP_WIDTH - 1] = 1; // Right wall
+    }
+
     bool running = true;
     SDL_Event event;
     Uint32 lastTime = SDL_GetTicks(), currentTime, elapsedTime;
@@ -114,19 +145,23 @@ int main(int argc, char* argv[]) {
         }
 
         if (elapsedTime > GAME_SPEED) {
+            Player nextPosition = player;
             switch (player.dir) {
             case UP:
-                player.y = (player.y - 1 + MAP_HEIGHT) % MAP_HEIGHT;
+                nextPosition.y = (player.y - 1 + MAP_HEIGHT) % MAP_HEIGHT;
                 break;
             case DOWN:
-                player.y = (player.y + 1) % MAP_HEIGHT;
+                nextPosition.y = (player.y + 1) % MAP_HEIGHT;
                 break;
             case LEFT:
-                player.x = (player.x - 1 + MAP_WIDTH) % MAP_WIDTH;
+                nextPosition.x = (player.x - 1 + MAP_WIDTH) % MAP_WIDTH;
                 break;
             case RIGHT:
-                player.x = (player.x + 1) % MAP_WIDTH;
+                nextPosition.x = (player.x + 1) % MAP_WIDTH;
                 break;
+            }
+            if (!CheckCollision(nextPosition, map)) {
+                player = nextPosition;
             }
             lastTime = currentTime;
         }
@@ -134,6 +169,7 @@ int main(int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
+        DrawMap(renderer, map);
         DrawPlayer(renderer, player.x, player.y);
 
         SDL_RenderPresent(renderer);
